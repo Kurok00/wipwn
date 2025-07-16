@@ -747,6 +747,7 @@ fix_permissions
 
 # Main menu
 main_menu() {
+main_menu() {
     while true; do
         show_banner
         echo -e "${CYAN}=== Cài Đặt Hiện Tại ===${NC}"
@@ -755,7 +756,7 @@ main_menu() {
             echo -e "${YELLOW}BSSID Mục Tiêu: ${GREEN}$BSSID${NC}"
         fi
         if [ ! -z "$PIN_PREFIX" ]; then
-            echo -e "${YELLOW>PIN Prefix: ${GREEN}$PIN_PREFIX${NC}"
+            echo -e "${YELLOW}PIN Prefix: ${GREEN}$PIN_PREFIX${NC}"
         fi
         echo
         
