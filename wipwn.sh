@@ -2,6 +2,16 @@
 # WIPWN - Giao diện Menu cho Termux và Linux
 # Phiên bản tối ưu cho điện thoại di động
 
+# Kiểm tra shell đang chạy
+if [ -n "$BASH_VERSION" ]; then
+    SHELL_NAME="bash"
+elif [ -n "$ZSH_VERSION" ]; then
+    SHELL_NAME="zsh"
+else
+    echo "Lỗi: Script này yêu cầu bash hoặc zsh"
+    exit 1
+fi
+
 # Màu sắc cho giao diện
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -10,24 +20,51 @@ BLUE='\033[1;34m'
 CYAN='\033[1;36m'
 NC='\033[0m' # Không màu
 
+# Xác định môi trường và đường dẫn
+if [ -d "/data/data/com.termux" ]; then
+    IS_TERMUX=true
+    HOME_DIR="/data/data/com.termux/files/home"
+    SCRIPT_NAME=$(basename "$0")
+    SCRIPT_DIR="$HOME_DIR/wipwn"
+else
+    IS_TERMUX=false
+    SCRIPT_NAME=$(basename "$0")
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+fi
+
 # Cài đặt mặc định
 INTERFACE="wlan0"
 BSSID=""
 PIN_PREFIX=""
-CURRENT_DIR=$(pwd)
+CURRENT_DIR="$SCRIPT_DIR"
+TEMP_DIR="/tmp"
 
-# Kiểm tra môi trường Termux
-if [ -d "/data/data/com.termux" ]; then
-    IS_TERMUX=true
-    echo -e "${YELLOW}Đã phát hiện môi trường Termux${NC}"
-else
-    IS_TERMUX=false
+# Tạo temp dir nếu không tồn tại
+if [ ! -d "$TEMP_DIR" ]; then
+    mkdir -p "$TEMP_DIR"
 fi
 
-# Hàm kiểm tra lệnh tồn tại
-command_exists() {
-    command -v "$1" &> /dev/null
+# Kiểm tra và tạo thư mục script nếu chưa có
+if [ ! -d "$SCRIPT_DIR" ]; then
+    mkdir -p "$SCRIPT_DIR"
+fi
+
+# Kiểm tra file script có tồn tại trong thư mục đích
+if [ ! -f "$SCRIPT_DIR/$SCRIPT_NAME" ]; then
+    cp "$0" "$SCRIPT_DIR/$SCRIPT_NAME"
+    chmod +x "$SCRIPT_DIR/$SCRIPT_NAME"
+fi
+
+# Cleanup function
+cleanup() {
+    echo -e "\n${YELLOW}[*] Đang dọn dẹp...${NC}"
+    rm -f "$TEMP_DIR"/*.tmp
+    echo -e "${GREEN}[✓] Đã dọn dẹp xong${NC}"
+    exit 0
 }
+
+# Bắt signal để cleanup
+trap cleanup SIGINT SIGTERM
 
 # Kiểm tra quyền root/sudo/tsu
 check_root() {
@@ -520,8 +557,45 @@ pin_bruteforce() {
 
 # Function to show help
 show_help() {
-    run_command "python $CURRENT_DIR/main.py --help"
-    echo -e "${YELLOW}Nhấn Enter để tiếp tục...${NC}"
+    clear
+    echo -e "\n${BLUE}┌───────────────────────────────┐${NC}"
+    echo -e "${BLUE}│      📚 HƯỚNG DẪN SỬ DỤNG     │${NC}"
+    echo -e "${BLUE}└───────────────────────────────┘${NC}\n"
+
+    echo -e "${YELLOW}=== HƯỚNG DẪN CÀI ĐẶT TRÊN TERMUX ===${NC}"
+    echo -e "${CYAN}1. Cài đặt các gói cần thiết:${NC}"
+    echo -e "   pkg update && pkg upgrade"
+    echo -e "   pkg install git python tsu"
+    
+    echo -e "\n${CYAN}2. Clone repository:${NC}"
+    echo -e "   git clone https://github.com/Kurok00/wipwn"
+    
+    echo -e "\n${CYAN}3. Cấp quyền và cài đặt:${NC}"
+    echo -e "   cd wipwn"
+    echo -e "   chmod +x wipwn.sh"
+    echo -e "   cp wipwn.sh /data/data/com.termux/files/home/wipwn/"
+    
+    echo -e "\n${CYAN}4. Chạy tool:${NC}"
+    echo -e "   ./wipwn.sh"
+
+    echo -e "\n${YELLOW}=== CÁCH SỬ DỤNG ===${NC}"
+    echo -e "${GREEN}1. Chọn card mạng không dây${NC}"
+    echo -e "${GREEN}2. Quét tìm mạng WPS xung quanh${NC}"
+    echo -e "${GREEN}3. Tấn công tự động tất cả mạng${NC}"
+    echo -e "${GREEN}4. Tấn công một mạng cụ thể${NC}"
+    echo -e "${GREEN}5. Tấn công bruteforce PIN${NC}"
+    
+    echo -e "\n${YELLOW}=== XỬ LÝ LỖI THƯỜNG GẶP ===${NC}"
+    echo -e "${RED}Lỗi: No such file or directory${NC}"
+    echo -e "${GREEN}➜ Kiểm tra lại đường dẫn cài đặt${NC}"
+    
+    echo -e "\n${RED}Lỗi: Permission denied${NC}"
+    echo -e "${GREEN}➜ Cấp quyền thực thi: chmod +x wipwn.sh${NC}"
+    
+    echo -e "\n${RED}Lỗi: Command not found${NC}"
+    echo -e "${GREEN}➜ Đảm bảo đã cài đặt đủ các gói cần thiết${NC}"
+
+    echo -e "\n${CYAN}Nhấn Enter để quay lại menu chính...${NC}"
     read
 }
 
@@ -580,6 +654,86 @@ advanced_options() {
         esac
     done
 }
+
+# Kiểm tra dependencies
+check_dependencies() {
+    local missing_deps=()
+    
+    # Kiểm tra các công cụ cần thiết
+    for tool in python iw iwconfig airmon-ng; do
+        if ! command -v "$tool" &> /dev/null; then
+            missing_deps+=("$tool")
+        fi
+    done
+    
+    # Nếu thiếu dependencies
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        echo -e "${RED}[!] Thiếu các công cụ sau:${NC}"
+        printf '%s\n' "${missing_deps[@]}"
+        
+        if [ "$IS_TERMUX" = true ]; then
+            echo -e "${YELLOW}[*] Đang cài đặt các gói cần thiết...${NC}"
+            pkg update && pkg upgrade -y
+            pkg install python iw wireless-tools tsu -y
+        else
+            echo -e "${YELLOW}[*] Vui lòng cài đặt các gói còn thiếu:${NC}"
+            echo "sudo apt-get update"
+            echo "sudo apt-get install python3 iw wireless-tools aircrack-ng"
+        fi
+        
+        # Kiểm tra lại sau khi cài
+        local still_missing=false
+        for tool in "${missing_deps[@]}"; do
+            if ! command -v "$tool" &> /dev/null; then
+                still_missing=true
+                echo -e "${RED}[!] Vẫn thiếu công cụ: $tool${NC}"
+            fi
+        done
+        
+        if [ "$still_missing" = true ]; then
+            echo -e "${RED}[!] Vui lòng cài đặt đầy đủ các công cụ còn thiếu và chạy lại script${NC}"
+            exit 1
+        fi
+    fi
+}
+
+# Fix permissions cho các file quan trọng
+fix_permissions() {
+    echo -e "${YELLOW}[*] Đang kiểm tra và sửa permissions...${NC}"
+    
+    # Fix for script directory
+    if [ ! -w "$SCRIPT_DIR" ]; then
+        if [ "$IS_TERMUX" = true ]; then
+            chmod 755 "$SCRIPT_DIR"
+        else
+            sudo chmod 755 "$SCRIPT_DIR"
+        fi
+    fi
+    
+    # Fix for script file
+    if [ ! -x "$SCRIPT_DIR/$SCRIPT_NAME" ]; then
+        if [ "$IS_TERMUX" = true ]; then
+            chmod +x "$SCRIPT_DIR/$SCRIPT_NAME"
+        else
+            sudo chmod +x "$SCRIPT_DIR/$SCRIPT_NAME"
+        fi
+    fi
+    
+    # Fix for temp directory
+    if [ ! -w "$TEMP_DIR" ]; then
+        if [ "$IS_TERMUX" = true ]; then
+            chmod 777 "$TEMP_DIR"
+        else
+            sudo chmod 777 "$TEMP_DIR"
+        fi
+    fi
+    
+    echo -e "${GREEN}[✓] Đã fix permissions xong${NC}"
+}
+
+# Chạy các kiểm tra ban đầu
+check_dependencies
+fix_permissions
 
 # Main menu
 main_menu() {
