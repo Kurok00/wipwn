@@ -2,29 +2,29 @@
 # -*- coding: utf-8 -*-
 
 """
-WIPWN Easy Menu Interface
-A user-friendly wrapper for WIPWN that enhances usability
-without modifying the core functionality.
+WIPWN - Giao Diện Menu Đơn Giản
+Một wrapper thân thiện với người dùng cho WIPWN,
+nâng cao khả năng sử dụng mà không thay đổi chức năng cốt lõi.
 """
 
 import os
 import sys
 import subprocess
 import re
-from colors import *  # Import colors from the existing colors.py
+from colors import *  # Import colors từ file colors.py có sẵn
 
-# Global settings
+# Cài đặt chung
 INTERFACE = "wlan0"
 BSSID = ""
 PIN_PREFIX = ""
 TEMP_SCAN_FILE = "scan_results.tmp"
 
 def clear_screen():
-    """Clear the terminal screen."""
+    """Xóa màn hình terminal."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def show_banner():
-    """Display the WIPWN banner."""
+    """Hiển thị banner WIPWN."""
     clear_screen()
     print(f"{blue}██╗    ██╗██╗██████╗ ██╗    ██╗███╗   ██╗")
     print(f"██║    ██║██║██╔══██╗██║    ██║████╗  ██║")
@@ -32,17 +32,17 @@ def show_banner():
     print(f"██║███╗██║██║██╔═══╝ ██║███╗██║██║╚██╗██║")
     print(f"╚███╔███╔╝██║██║     ╚███╔███╔╝██║ ╚████║")
     print(f" ╚══╝╚══╝ ╚═╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═══╝{reset}")
-    print(f"{green}=== WiFi Pentesting Framework ===={reset}")
-    print(f"{yellow}Enhanced Python Menu Interface{reset}\n")
+    print(f"{green}=== Tool Kiểm Tra Bảo Mật WiFi ===={reset}")
+    print(f"{yellow}Giao Diện Python Nâng Cao{reset}\n")
 
 def check_root():
-    """Check if the script is running as root."""
+    """Kiểm tra xem script có đang chạy với quyền root không."""
     if os.name != 'nt' and os.geteuid() != 0:
-        print(f"{red}[!] This script must be run as root{reset}")
+        print(f"{red}[!] Script này phải được chạy với quyền root{reset}")
         sys.exit(1)
 
 def get_wireless_interfaces():
-    """Get a list of wireless interfaces."""
+    """Lấy danh sách các card mạng không dây."""
     interfaces = []
     
     try:
@@ -66,21 +66,21 @@ def get_wireless_interfaces():
     return interfaces
 
 def select_interface():
-    """Select a wireless interface."""
+    """Chọn card mạng không dây."""
     global INTERFACE
     
-    print(f"{cyan}[*] Available wireless interfaces:{reset}")
+    print(f"{cyan}[*] Card mạng không dây có sẵn:{reset}")
     interfaces = get_wireless_interfaces()
     
     if not interfaces:
-        print(f"{red}[!] No wireless interfaces found{reset}")
+        print(f"{red}[!] Không tìm thấy card mạng không dây nào{reset}")
         return
         
     for i, iface in enumerate(interfaces, 1):
         print(f"{i}. {iface}")
         
-    print(f"{yellow}Current interface: {INTERFACE}{reset}")
-    choice = input(f"{green}Select interface (number or name, press Enter to keep current): {reset}")
+    print(f"{yellow}Card mạng hiện tại: {INTERFACE}{reset}")
+    choice = input(f"{green}Chọn card mạng (số hoặc tên, Enter để giữ nguyên): {reset}")
     
     if choice.strip():
         try:
@@ -89,19 +89,19 @@ def select_interface():
             elif choice in interfaces:
                 INTERFACE = choice
         except (ValueError, IndexError):
-            print(f"{red}[!] Invalid selection{reset}")
+            print(f"{red}[!] Lựa chọn không hợp lệ{reset}")
             return
             
-    print(f"{blue}[+] Interface set to: {INTERFACE}{reset}")
-    input("Press Enter to continue...")
+    print(f"{blue}[+] Đã chọn card mạng: {INTERFACE}{reset}")
+    input("Nhấn Enter để tiếp tục...")
 
 def run_command(command):
-    """Run a command and return output."""
+    """Chạy một lệnh và trả về kết quả."""
     try:
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                   universal_newlines=True)
         
-        # Print output in real-time
+        # In kết quả theo thời gian thực
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
@@ -111,149 +111,149 @@ def run_command(command):
                 
         return process.poll()
     except subprocess.CalledProcessError as e:
-        print(f"{red}[!] Error executing command: {e}{reset}")
+        print(f"{red}[!] Lỗi khi thực thi lệnh: {e}{reset}")
         return -1
     except KeyboardInterrupt:
-        print(f"\n{yellow}[*] Operation cancelled by user{reset}")
+        print(f"\n{yellow}[*] Người dùng đã hủy bỏ thao tác{reset}")
         return -1
 
 def scan_networks():
-    """Scan for networks with WPS."""
-    print(f"{cyan}[*] Scanning for networks with WPS...{reset}")
-    print(f"{yellow}[!] This might take some time...{reset}")
+    """Quét các mạng có sẵn với WPS."""
+    print(f"{cyan}[*] Đang quét các mạng có sẵn với WPS...{reset}")
+    print(f"{yellow}[!] Điều này có thể mất một thời gian...{reset}")
     
     command = f"sudo python main.py -i {INTERFACE} -s"
     run_command(command)
     
-    print(f"{green}[+] Scan complete{reset}")
-    input("Press Enter to continue...")
+    print(f"{green}[+] Quá trình quét hoàn tất{reset}")
+    input("Nhấn Enter để tiếp tục...")
 
 def auto_attack():
-    """Auto-attack all networks."""
-    print(f"{cyan}[*] Starting automatic attack on all networks...{reset}")
+    """Tấn công tự động tất cả các mạng."""
+    print(f"{cyan}[*] Bắt đầu tấn công tự động vào tất cả các mạng...{reset}")
     
     command = f"sudo python main.py -i {INTERFACE} -K"
     run_command(command)
     
-    input("Press Enter to continue...")
+    input("Nhấn Enter để tiếp tục...")
 
 def attack_specific():
-    """Attack a specific BSSID."""
+    """Tấn công một BSSID cụ thể."""
     global BSSID
     
-    new_bssid = input(f"{green}Enter target BSSID (MAC address, format XX:XX:XX:XX:XX:XX): {reset}")
+    new_bssid = input(f"{green}Nhập BSSID mục tiêu (địa chỉ MAC, định dạng XX:XX:XX:XX:XX:XX): {reset}")
     if not new_bssid.strip():
-        print(f"{red}[!] BSSID cannot be empty{reset}")
-        input("Press Enter to continue...")
+        print(f"{red}[!] BSSID không được để trống{reset}")
+        input("Nhấn Enter để tiếp tục...")
         return
         
     BSSID = new_bssid
-    print(f"{cyan}[*] Starting attack on {BSSID}...{reset}")
+    print(f"{cyan}[*] Bắt đầu tấn công vào {BSSID}...{reset}")
     
     command = f"sudo python main.py -i {INTERFACE} -b {BSSID} -K"
     run_command(command)
     
-    input("Press Enter to continue...")
+    input("Nhấn Enter để tiếp tục...")
 
 def pin_bruteforce():
-    """Perform PIN bruteforce attack."""
+    """Thực hiện tấn công bruteforce PIN."""
     global BSSID, PIN_PREFIX
     
-    new_bssid = input(f"{green}Enter target BSSID (MAC address, current: {BSSID}): {reset}")
+    new_bssid = input(f"{green}Nhập BSSID mục tiêu (địa chỉ MAC, hiện tại: {BSSID}): {reset}")
     if new_bssid.strip():
         BSSID = new_bssid
     
     if not BSSID:
-        print(f"{red}[!] BSSID cannot be empty{reset}")
-        input("Press Enter to continue...")
+        print(f"{red}[!] BSSID không được để trống{reset}")
+        input("Nhấn Enter để tiếp tục...")
         return
         
-    new_pin = input(f"{green}Enter PIN prefix (e.g. 1234, leave blank for full bruteforce): {reset}")
+    new_pin = input(f"{green}Nhập tiền tố PIN (ví dụ: 1234, để trống để bruteforce toàn bộ): {reset}")
     PIN_PREFIX = new_pin
     
     if PIN_PREFIX:
-        print(f"{cyan}[*] Starting PIN bruteforce on {BSSID} with prefix {PIN_PREFIX}...{reset}")
+        print(f"{cyan}[*] Bắt đầu tấn công bruteforce PIN vào {BSSID} với tiền tố {PIN_PREFIX}...{reset}")
         command = f"sudo python main.py -i {INTERFACE} -b {BSSID} -B -p {PIN_PREFIX}"
     else:
-        print(f"{cyan}[*] Starting full PIN bruteforce on {BSSID}...{reset}")
+        print(f"{cyan}[*] Bắt đầu tấn công bruteforce toàn bộ PIN vào {BSSID}...{reset}")
         command = f"sudo python main.py -i {INTERFACE} -b {BSSID} -B"
         
     run_command(command)
     
-    input("Press Enter to continue...")
+    input("Nhấn Enter để tiếp tục...")
 
 def show_help():
-    """Show help information."""
+    """Hiển thị thông tin trợ giúp."""
     command = "sudo python main.py --help"
     run_command(command)
-    input("Press Enter to continue...")
+    input("Nhấn Enter để tiếp tục...")
 
 def advanced_options():
-    """Advanced options menu."""
+    """Menu tùy chọn nâng cao."""
     while True:
         show_banner()
-        print(f"{cyan}=== Advanced Options ==={reset}")
-        print(f"{blue}1.{reset} Custom command execution")
-        print(f"{blue}2.{reset} View saved credentials")
-        print(f"{blue}3.{reset} Check vulnerable router database")
-        print(f"{red}0.{reset} Back to main menu")
+        print(f"{cyan}=== Tùy Chọn Nâng Cao ==={reset}")
+        print(f"{blue}1.{reset} Thực thi lệnh tùy chỉnh")
+        print(f"{blue}2.{reset} Xem thông tin đăng nhập đã lưu")
+        print(f"{blue}3.{reset} Kiểm tra cơ sở dữ liệu router dễ bị tấn công")
+        print(f"{red}0.{reset} Quay lại menu chính")
         
-        choice = input(f"{green}Select an option: {reset}")
+        choice = input(f"{green}Chọn một tùy chọn: {reset}")
         
         if choice == "1":
-            cmd = input(f"{green}Enter custom WIPWN command (e.g. -i wlan0 -b XX:XX:XX:XX:XX:XX -K): {reset}")
+            cmd = input(f"{green}Nhập lệnh WIPWN tùy chỉnh (ví dụ: -i wlan0 -b XX:XX:XX:XX:XX:XX -K): {reset}")
             run_command(f"sudo python main.py {cmd}")
-            input("Press Enter to continue...")
+            input("Nhấn Enter để tiếp tục...")
         elif choice == "2":
-            print(f"{cyan}[*] Saved credentials (if any):{reset}")
+            print(f"{cyan}[*] Thông tin đăng nhập đã lưu (nếu có):{reset}")
             try:
                 with open("config.txt", "r") as f:
                     content = f.read()
                     if content.strip():
                         print(content)
                     else:
-                        print(f"{yellow}No saved credentials found{reset}")
+                        print(f"{yellow}Không tìm thấy thông tin đăng nhập đã lưu{reset}")
             except FileNotFoundError:
-                print(f"{red}Config file not found{reset}")
-            input("Press Enter to continue...")
+                print(f"{red}Không tìm thấy file cấu hình{reset}")
+            input("Nhấn Enter để tiếp tục...")
         elif choice == "3":
-            print(f"{cyan}[*] Vulnerable router models:{reset}")
+            print(f"{cyan}[*] Các mẫu router dễ bị tấn công:{reset}")
             try:
                 with open("vulnwsc.txt", "r") as f:
                     for line in f:
                         print(f"- {line.strip()}")
             except FileNotFoundError:
-                print(f"{red}Vulnerable router database not found{reset}")
-            input("Press Enter to continue...")
+                print(f"{red}Không tìm thấy cơ sở dữ liệu router dễ bị tấn công{reset}")
+            input("Nhấn Enter để tiếp tục...")
         elif choice == "0":
             break
         else:
-            print(f"{red}Invalid option{reset}")
-            input("Press Enter to continue...")
+            print(f"{red}Tùy chọn không hợp lệ{reset}")
+            input("Nhấn Enter để tiếp tục...")
 
 def main_menu():
-    """Display the main menu and handle user input."""
+    """Hiển thị menu chính và xử lý đầu vào của người dùng."""
     while True:
         show_banner()
-        print(f"{cyan}=== Current Settings ==={reset}")
-        print(f"{yellow}Interface: {green}{INTERFACE}{reset}")
+        print(f"{cyan}=== Cài Đặt Hiện Tại ==={reset}")
+        print(f"{yellow}Card mạng: {green}{INTERFACE}{reset}")
         if BSSID:
-            print(f"{yellow}Target BSSID: {green}{BSSID}{reset}")
+            print(f"{yellow}BSSID mục tiêu: {green}{BSSID}{reset}")
         if PIN_PREFIX:
-            print(f"{yellow}PIN Prefix: {green}{PIN_PREFIX}{reset}")
+            print(f"{yellow}Tiền tố PIN: {green}{PIN_PREFIX}{reset}")
         print()
         
-        print(f"{cyan}=== WIPWN Menu ==={reset}")
-        print(f"{blue}1.{reset} Select wireless interface")
-        print(f"{blue}2.{reset} Scan for WPS networks")
-        print(f"{blue}3.{reset} Auto-attack all networks (Pixie Dust)")
-        print(f"{blue}4.{reset} Attack specific BSSID (Pixie Dust)")
-        print(f"{blue}5.{reset} PIN bruteforce attack")
-        print(f"{blue}6.{reset} Show help / command options")
-        print(f"{blue}7.{reset} Advanced options")
-        print(f"{red}0.{reset} Exit")
+        print(f"{cyan}=== Menu WIPWN ==={reset}")
+        print(f"{blue}1.{reset} Chọn card mạng không dây")
+        print(f"{blue}2.{reset} Quét các mạng WPS")
+        print(f"{blue}3.{reset} Tấn công tự động tất cả các mạng (Pixie Dust)")
+        print(f"{blue}4.{reset} Tấn công BSSID cụ thể (Pixie Dust)")
+        print(f"{blue}5.{reset} Tấn công bruteforce PIN")
+        print(f"{blue}6.{reset} Hiển thị trợ giúp / tùy chọn lệnh")
+        print(f"{blue}7.{reset} Tùy chọn nâng cao")
+        print(f"{red}0.{reset} Thoát")
         
-        choice = input(f"{green}Select an option: {reset}")
+        choice = input(f"{green}Chọn một tùy chọn: {reset}")
         
         if choice == "1":
             select_interface()
@@ -270,16 +270,16 @@ def main_menu():
         elif choice == "7":
             advanced_options()
         elif choice == "0":
-            print(f"{red}Exiting...{reset}")
+            print(f"{red}Đang thoát...{reset}")
             sys.exit(0)
         else:
-            print(f"{red}Invalid option{reset}")
-            input("Press Enter to continue...")
+            print(f"{red}Tùy chọn không hợp lệ{reset}")
+            input("Nhấn Enter để tiếp tục...")
 
 if __name__ == "__main__":
     try:
         check_root()
         main_menu()
     except KeyboardInterrupt:
-        print(f"\n{red}Program interrupted by user. Exiting...{reset}")
+        print(f"\n{red}Chương trình bị ngắt bởi người dùng. Đang thoát...{reset}")
         sys.exit(0)
