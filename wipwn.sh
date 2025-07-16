@@ -37,11 +37,18 @@ INTERFACE="wlan0"
 BSSID=""
 PIN_PREFIX=""
 CURRENT_DIR="$SCRIPT_DIR"
-TEMP_DIR="/tmp"
+
+# Xác định thư mục temp
+if [ "$IS_TERMUX" = true ]; then
+    TEMP_DIR="$HOME_DIR/.temp"
+else
+    TEMP_DIR="/tmp"
+fi
 
 # Tạo temp dir nếu không tồn tại
 if [ ! -d "$TEMP_DIR" ]; then
     mkdir -p "$TEMP_DIR"
+    chmod 700 "$TEMP_DIR"  # Chỉ user hiện tại có quyền truy cập
 fi
 
 # Kiểm tra và tạo thư mục script nếu chưa có
