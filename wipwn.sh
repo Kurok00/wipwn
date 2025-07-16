@@ -659,12 +659,15 @@ advanced_options() {
 check_dependencies() {
     local missing_deps=()
     
-    # Kiểm tra các công cụ cần thiết
-    for tool in python iw iwconfig airmon-ng; do
-        if ! command -v "$tool" &> /dev/null; then
-            missing_deps+=("$tool")
-        fi
-    done
+    # Kiểm tra Python (bắt buộc)
+    if ! command -v python &> /dev/null; then
+        missing_deps+=("python")
+    fi
+    
+    # Kiểm tra công cụ WiFi (cần ít nhất một trong hai)
+    if ! command -v iw &> /dev/null && ! command -v iwconfig &> /dev/null; then
+        missing_deps+=("iw/iwconfig")
+    fi
     
     # Nếu thiếu dependencies
     if [ ${#missing_deps[@]} -ne 0 ]; then
@@ -674,7 +677,7 @@ check_dependencies() {
         if [ "$IS_TERMUX" = true ]; then
             echo -e "${YELLOW}[*] Đang cài đặt các gói cần thiết...${NC}"
             pkg update && pkg upgrade -y
-            pkg install python iw wireless-tools tsu -y
+            pkg install python wireless-tools tsu -y
         else
             echo -e "${YELLOW}[*] Vui lòng cài đặt các gói còn thiếu:${NC}"
             echo "sudo apt-get update"
