@@ -2,6 +2,26 @@
 # WIPWN - Giao diện Menu cho Termux và Linux
 # Phiên bản tối ưu cho điện thoại di động
 
+# Định nghĩa các hàm tiện ích
+command_exists() {# Kiểm tra và liệt kê giao diện mạng không dây
+select_interface() {
+    echo -e "${CYAN}[*] Đang kiểm tra giao diện ${INTERFACE}...${NC}"
+    
+    # Lưu danh sách giao diện
+    local interfaces=()
+    
+    # Thử với iwconfig trước (phù hợp với Termux)
+    if command_exists iwconfig; then
+        while read -r line; do
+            if [[ $line =~ ^([a-zA-Z0-9]+)[[:space:]]+ ]]; then
+                iface="${BASH_REMATCH[1]}"
+                if iwconfig "$iface" 2>/dev/null | grep -q "IEEE 802.11"; then
+                    interfaces+=("$iface")
+                fi
+            fi
+        done < <(iwconfig 2>/dev/null)pe "$1" &>/dev/null
+}
+
 # Kiểm tra shell đang chạy
 if [ -n "$BASH_VERSION" ]; then
     SHELL_NAME="bash"
@@ -11,6 +31,24 @@ else
     echo "Lỗi: Script này yêu cầu bash hoặc zsh"
     exit 1
 fi
+
+# Kiểm tra root/sudo
+check_root() {
+    if [ "$IS_TERMUX" = true ]; then
+        if command_exists tsu; then
+            echo -e "${GREEN}[+] Đã phát hiện Termux với tsu${NC}"
+        elif command_exists sudo; then
+            echo -e "${GREEN}[+] Đã phát hiện Termux với sudo${NC}"
+        else
+            echo -e "${RED}[!] Cần cài đặt tsu hoặc sudo. Chạy: pkg install tsu${NC}"
+            exit 1
+        fi
+    elif [ "$(id -u)" -ne 0 ]; then
+        echo -e "${RED}[!] Script này phải chạy với quyền root${NC}"
+        echo -e "${YELLOW}[*] Thử chạy: sudo $0${NC}"
+        exit 1
+    fi
+}
 
 # Màu sắc cho giao diện
 RED='\033[1;31m'
@@ -41,6 +79,9 @@ CURRENT_DIR="$SCRIPT_DIR"
 # Xác định thư mục temp
 if [ "$IS_TERMUX" = true ]; then
     TEMP_DIR="$HOME_DIR/.temp"
+    # Cài đặt các gói cần thiết
+    pkg update && pkg upgrade -y
+    pkg install -y python wireless-tools tsu
 else
     TEMP_DIR="/tmp"
 fi
