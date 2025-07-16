@@ -745,8 +745,7 @@ fix_permissions() {
 check_dependencies
 fix_permissions
 
-# Main menu
-main_menu() {
+# Main menu function
 main_menu() {
     while true; do
         show_banner
